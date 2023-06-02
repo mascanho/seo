@@ -10,6 +10,8 @@ from nltk.tokenize import word_tokenize
 
 
 # ANSI escape codes for color formatting
+
+
 class Colors:
     HEADER = "\033[95m"
     BLUE = "\033[94m"
@@ -19,6 +21,59 @@ class Colors:
     ENDC = "\033[0m"
 
 
+
+# Prompt the user to input the URL
+url = input("Enter the URL: ")
+
+
+def analyze_images(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "html.parser")
+    image_tags = soup.find_all("img")
+    image_analysis = []
+
+    for tag in image_tags:
+        image_src = tag.get("src", "")
+        if image_src.startswith("https:"):
+            image_alt = tag.get("alt", "")
+            image_size = get_image_size(image_src)
+            image_optimization = optimize_image(image_size)
+
+            image_data = {
+                "src": image_src,
+                "alt": image_alt,
+                "size": image_size,
+                "optimized": image_optimization,
+            }
+            image_analysis.append(image_data)
+
+    return image_analysis
+
+
+def get_image_size(image_url):
+    response = requests.head(image_url)
+    size_header = response.headers.get("content-length")
+    if size_header:
+        size_bytes = int(size_header)
+        size_kb = size_bytes / 1024
+        size_mb = size_kb / 1024
+        return f"{size_mb:.2f} MB" if size_mb > 1 else f"{size_kb:.2f} KB"
+    return "Unknown"
+
+
+def optimize_image(image_size):
+    # Add your image optimization logic here
+    # You can define thresholds or criteria for optimization based on image sizes
+    # For example, you can check if image_size exceeds a certain limit and mark it as "Not Optimized"
+    return "Optimized"  # Replace with your logic
+
+
+
+
+# Analyze images on the webpage
+image_analysis = analyze_images(url)
+
+
 def get_page_title(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
@@ -26,16 +81,36 @@ def get_page_title(url):
     return title
 
 
+
+
 def get_page_description(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
     meta_tags = soup.find_all("meta")
     description = ""
+    indexing_type = ""
+    follow_type = ""
     for tag in meta_tags:
-        if "name" in tag.attrs and tag.attrs["name"].lower() == "description":
-            description = tag.attrs["content"].strip()
-            break
-    return description if description else "No description found"
+        if 'name' in tag.attrs and tag.attrs['name'].lower() == 'description':
+            description = tag.attrs.get('content', '').strip()
+
+        if 'name' in tag.attrs and tag.attrs['name'].lower() == 'robots':
+            content = tag.attrs.get('content', '').lower()
+
+            if 'noindex' in content:
+                indexing_type = 'Noindex'
+            elif 'index' in content:
+                indexing_type = 'Index'
+
+            if 'nofollow' in content:
+                follow_type = 'Nofollow'
+            elif 'follow' in content:
+                follow_type = 'Follow'
+
+            break    
+    return description if description else "No description found", indexing_type, follow_type
+
+
 
 
 def get_page_keywords(url):
@@ -214,13 +289,11 @@ def get_all_links(url):
     return all_links
 
 
-# Prompt the user to input the URL
-url = input("Enter the URL: ")
 
 # Get the page title, description, keywords, response code, URL chain, heading structure,
 # hreflang tags, and internal links
 title = get_page_title(url)
-description = get_page_description(url)
+description, indexing_type, follow_type = get_page_description(url)
 keywords = get_page_keywords(url)
 response_code = get_response_code(url)
 url_chain = get_url_chain(url)
@@ -232,9 +305,11 @@ internal_links = get_all_links(url)
 print("\n")
 print(f"{Colors.RED}Analysing: {Colors.ENDC}{Colors.BLUE}{url}{Colors.ENDC}")
 print("\n")
-print(f"{Colors.HEADER}Page title: {Colors.BLUE}{title}{Colors.ENDC}\n")
-print(f"{Colors.HEADER}Page description: {Colors.BLUE}{description}{Colors.ENDC}\n")
-print(f"{Colors.HEADER}Page keywords:{Colors.ENDC}\n")
+print(f"{Colors.HEADER}Page indexing type:🤖 {Colors.BLUE}{indexing_type}{Colors.ENDC}")
+print(f"{Colors.HEADER}Page follow type: 🤖 {Colors.BLUE}{follow_type}{Colors.ENDC}\n")
+print(f"{Colors.HEADER}Page title: 🖊 {Colors.BLUE}{title}{Colors.ENDC}\n")
+print(f"{Colors.HEADER}Page description: 🖊 {Colors.BLUE}{description}{Colors.ENDC}\n")
+print(f"{Colors.HEADER}Page keywords 🔑:{Colors.ENDC}\n")
 for keyword, frequency in keywords:
     print(f"- {Colors.YELLOW}{keyword}{Colors.ENDC}: {frequency}")
 print("\n")
@@ -257,5 +332,21 @@ for hreflang_url in hreflang_urls:
 print(f"\n{Colors.HEADER}Internal Links (excluding footer and navbar):\n")
 for internal_link, anchor_text in internal_links:
     print(
-        f"{Colors.YELLOW}{anchor_text}{Colors.ENDC}: {Colors.BLUE}{internal_link}{Colors.ENDC}"
+        f"{Colors.YELLOW}{anchor_text}{Colors.ENDC}: {Colors.BLUE}{internal_link}{Colors.ENDC}\n"
     )
+
+## blank space
+# Output the results
+print("{Colors.}Image Analysis:")
+for image_data in image_analysis:
+    print("-" * 50)
+    print(f"Image Source: {image_data['src']}")
+    print(f"Alt Text: {image_data['alt']}")
+    size_text = f"Size: {image_data['size']}"
+    if "KB" in size_text and float(image_data['size'].replace(' KB', '')) > 60:
+        print(f"\033[91m{size_text}\033[0m")  # Set text color to red
+    else:
+        print(size_text)
+    print(f"Optimized: {image_data['optimized']}")
+
+
