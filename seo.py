@@ -65,6 +65,8 @@ def optimize_image(image_size):
     # Add your image optimization logic here
     # You can define thresholds or criteria for optimization based on image sizes
     # For example, you can check if image_size exceeds a certain limit and mark it as "Not Optimized"
+    if image_size > "0,60":
+        return "Too Big"
     return "Optimized"  # Replace with your logic
 
 
@@ -337,14 +339,14 @@ for internal_link, anchor_text in internal_links:
 
 ## blank space
 # Output the results
-print("{Colors.}Image Analysis:")
+print(f"{Colors.HEADER}Image Analysis:{Colors.ENDC}")
 for image_data in image_analysis:
     print("-" * 50)
-    print(f"Image Source: {image_data['src']}")
-    print(f"Alt Text: {image_data['alt']}")
+    print(f"{Colors.HEADER}Image Source: {Colors.YELLOW} {image_data['src']}{Colors.ENDC}")
+    print(f"{Colors.HEADER}Alt Text: {Colors.YELLOW}{image_data['alt']}{Colors.ENDC}")
     size_text = f"Size: {image_data['size']}"
     if "KB" in size_text and float(image_data['size'].replace(' KB', '')) > 60:
-        print(f"\033[91m{size_text}\033[0m")  # Set text color to red
+        print(f"{Colors.HEADER}\033[91m{size_text}\033[0m{Colors.ENDC}")  # Set text color to red
     else:
         print(size_text)
     print(f"Optimized: {image_data['optimized']}")
