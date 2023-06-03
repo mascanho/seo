@@ -1,3 +1,4 @@
+import json
 from urllib.parse import urljoin, urlparse
 
 import nltk
@@ -7,6 +8,29 @@ from bs4.element import Comment
 from nltk.corpus import stopwords
 from nltk.probability import FreqDist
 from nltk.tokenize import word_tokenize
+
+# Prompt the user to input the URL
+url = input("enter the url: ")
+
+
+def analyze_structured_data(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "html.parser")
+    script_tags = soup.find_all("script", type="application/ld+json")
+    structured_data = []
+
+    for tag in script_tags:
+        try:
+            data = json.loads(tag.string)
+            structured_data.append(data)
+        except json.JSONDecodeError:
+            pass
+
+    return structured_data
+
+
+# Analyze structured data on the webpage
+structured_data = analyze_structured_data(url)
 
 
 # ANSI escape codes for color formatting
@@ -19,11 +43,6 @@ class Colors:
     YELLOW = "\033[93m"
     RED = "\033[31m"
     ENDC = "\033[0m"
-
-
-
-# Prompt the user to input the URL
-url = input("Enter the URL: ")
 
 
 def analyze_images(url):
@@ -64,12 +83,8 @@ def get_image_size(image_url):
 def optimize_image(image_size):
     # Add your image optimization logic here
     # You can define thresholds or criteria for optimization based on image sizes
-    # For example, you can check if image_size exceeds a certain limit and mark it as "Not Optimized"
-    if image_size > "0,60":
-        return "Too Big"
+    # For example, you can check if image_size exceeds a certain limit and mark it as "Not Optimized"        return "Too Big"
     return "Optimized"  # Replace with your logic
-
-
 
 
 # Analyze images on the webpage
@@ -83,8 +98,6 @@ def get_page_title(url):
     return title
 
 
-
-
 def get_page_description(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
@@ -93,26 +106,28 @@ def get_page_description(url):
     indexing_type = ""
     follow_type = ""
     for tag in meta_tags:
-        if 'name' in tag.attrs and tag.attrs['name'].lower() == 'description':
-            description = tag.attrs.get('content', '').strip()
+        if "name" in tag.attrs and tag.attrs["name"].lower() == "description":
+            description = tag.attrs.get("content", "").strip()
 
-        if 'name' in tag.attrs and tag.attrs['name'].lower() == 'robots':
-            content = tag.attrs.get('content', '').lower()
+        if "name" in tag.attrs and tag.attrs["name"].lower() == "robots":
+            content = tag.attrs.get("content", "").lower()
 
-            if 'noindex' in content:
-                indexing_type = 'Noindex'
-            elif 'index' in content:
-                indexing_type = 'Index'
+            if "noindex" in content:
+                indexing_type = "Not Index by Google"
+            elif "index" in content:
+                indexing_type = "Indexed by Google"
 
-            if 'nofollow' in content:
-                follow_type = 'Nofollow'
-            elif 'follow' in content:
-                follow_type = 'Follow'
+            if "nofollow" in content:
+                follow_type = "Nofollow"
+            elif "follow" in content:
+                follow_type = "Follow"
 
-            break    
-    return description if description else "No description found", indexing_type, follow_type
-
-
+            break
+    return (
+        description if description else "No description found",
+        indexing_type,
+        follow_type,
+    )
 
 
 def get_page_keywords(url):
@@ -291,7 +306,6 @@ def get_all_links(url):
     return all_links
 
 
-
 # Get the page title, description, keywords, response code, URL chain, heading structure,
 # hreflang tags, and internal links
 title = get_page_title(url)
@@ -337,18 +351,28 @@ for internal_link, anchor_text in internal_links:
         f"{Colors.YELLOW}{anchor_text}{Colors.ENDC}: {Colors.BLUE}{internal_link}{Colors.ENDC}\n"
     )
 
-## blank space
+# blank space
 # Output the results
-print(f"{Colors.HEADER}Image Analysis:{Colors.ENDC}")
+print(f"{Colors.HEADER}Image Analysis:{Colors.ENDC}\n")
 for image_data in image_analysis:
     print("-" * 50)
-    print(f"{Colors.HEADER}Image Source: {Colors.YELLOW} {image_data['src']}{Colors.ENDC}")
+    print(
+        f"{Colors.HEADER}Image Source: {Colors.YELLOW} {image_data['src']}{Colors.ENDC}"
+    )
     print(f"{Colors.HEADER}Alt Text: {Colors.YELLOW}{image_data['alt']}{Colors.ENDC}")
-    size_text = f"Size: {image_data['size']}"
-    if "KB" in size_text and float(image_data['size'].replace(' KB', '')) > 60:
-        print(f"{Colors.HEADER}\033[91m{size_text}\033[0m{Colors.ENDC}")  # Set text color to red
+    size_text = f"{image_data['size']}"
+    if "KB" in size_text and float(image_data["size"].replace(" KB", "")) > 60:
+        print(
+            f"{Colors.HEADER}Size: {Colors.RED}{size_text}{Colors.ENDC}"
+        )  # Set text color to red
     else:
-        print(size_text)
-    print(f"Optimized: {image_data['optimized']}")
+        print(f"{Colors.HEADER}Size: {Colors.YELLOW}{size_text}{Colors.ENDC}")
 
-
+# Output the Strucured data results
+print(f"\n{Colors.HEADER}Structured Data Analysis:{Colors.ENDC}\n")
+if structured_data:
+    for data in structured_data:
+        print("-" * 50)
+        print(f"{Colors.BLUE}{json.dumps(data, indent=4)}{Colors.ENDC}")
+else:
+    print(f"{Colors.YELLOW}No structured data found on the webpage.{Colors.ENDC}")
